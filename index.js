@@ -14,12 +14,14 @@ const users = [
 	}
 ]
 
+// test for both users
 Async.each(users, testUser, () => {
 })
 
 function testUser(user, done) {
 	const Client = new Nes.Client("ws://localhost:9090");
 
+	// login using http request
 	Wreck.request(
 		"POST",
 		"http://localhost:9090/login",
@@ -39,15 +41,18 @@ function testUser(user, done) {
 				return done();
 			}
 
+			// read the cookie from login response
 			let cookie = res.headers['set-cookie'][0];
 			cookie = cookie.match(/(?:[^\x00-\x20\(\)<>@\,;\:\\"\/\[\]\?\=\{\}\x7F]+)\s*=\s*(?:([^\x00-\x20\"\,\;\\\x7F]*))/)[1];
 
+			// connect using ws, authenticating using the http cookie
 			Client.connect({auth: {headers: {cookie: 'sid=' + cookie}}}, function (err) {
 				if (err) {
 					console.log(user.username + ': Error connecting ws to server: ', err);
 					return done();
 				}
 
+				// subscribe to a channel
 				Client.subscribe(
 					'/job/progress',
 					(message) => {
@@ -60,12 +65,15 @@ function testUser(user, done) {
 						}
 					}
 				);
+
+				// call GET /ping using ws instead of http
 				Client.request('/ping', function (err) {
 					if (err) {
 						console.log(user.username + ': Error ping: ', err);
 						return done();
 					}
 
+					// call POST /service/ok using ws instead of http
 					Client.request(
 						{
 							method: 'POST',
